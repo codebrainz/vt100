@@ -18,16 +18,16 @@
 
 // Parser states for the VT100 state machine
 typedef enum {
-    S_GROUND, // Default state: printable/control chars, ESC starts sequence
-    S_ESC, // After ESC: next byte determines sequence type
-    S_CSI_ENTRY, // After CSI introducer: parse params/intermediates
-    S_CSI_PARAM, // Parsing CSI parameters
-    S_CSI_INTER, // Parsing CSI intermediate bytes
+    S_GROUND,     // Default state: printable/control chars, ESC starts sequence
+    S_ESC,        // After ESC: next byte determines sequence type
+    S_CSI_ENTRY,  // After CSI introducer: parse params/intermediates
+    S_CSI_PARAM,  // Parsing CSI parameters
+    S_CSI_INTER,  // Parsing CSI intermediate bytes
     S_OSC_STRING, // Parsing OSC string (terminated by BEL or ST)
-    S_DCS_ENTRY, // After DCS introducer
+    S_DCS_ENTRY,  // After DCS introducer
     S_DCS_STRING, // Parsing DCS string (terminated by BEL or ST)
-    S_PM_STRING, // Parsing PM string (terminated by BEL or ST)
-    S_APC_STRING // Parsing APC string (terminated by BEL or ST)
+    S_PM_STRING,  // Parsing PM string (terminated by BEL or ST)
+    S_APC_STRING  // Parsing APC string (terminated by BEL or ST)
 } vt100_state_t;
 
 // vt100_parser_t is now a typedef struct in the header

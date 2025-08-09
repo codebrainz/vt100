@@ -36,15 +36,15 @@ extern "C" {
  * @brief Types of events emitted by the VT100 parser.
  */
 typedef enum {
-    VT100_EVENT_NONE = 0, /**< No event */
+    VT100_EVENT_NONE = 0,  /**< No event */
     VT100_EVENT_PRINTABLE, /**< Printable character (ASCII, tab, CR, LF) */
-    VT100_EVENT_CONTROL, /**< Control character (C0/C1 except ESC) */
-    VT100_EVENT_ESCAPE, /**< ESC + final byte (ESC X) */
-    VT100_EVENT_CSI, /**< Control Sequence Introducer (CSI) */
-    VT100_EVENT_OSC, /**< Operating System Command (OSC) */
-    VT100_EVENT_DCS, /**< Device Control String (DCS) */
-    VT100_EVENT_PM, /**< Privacy Message (ESC ^ ... ST) */
-    VT100_EVENT_APC, /**< Application Program Command (ESC _ ... ST) */
+    VT100_EVENT_CONTROL,   /**< Control character (C0/C1 except ESC) */
+    VT100_EVENT_ESCAPE,    /**< ESC + final byte (ESC X) */
+    VT100_EVENT_CSI,       /**< Control Sequence Introducer (CSI) */
+    VT100_EVENT_OSC,       /**< Operating System Command (OSC) */
+    VT100_EVENT_DCS,       /**< Device Control String (DCS) */
+    VT100_EVENT_PM,        /**< Privacy Message (ESC ^ ... ST) */
+    VT100_EVENT_APC,       /**< Application Program Command (ESC _ ... ST) */
     /** XTerm mouse tracking (CSI M, CSI < ... M/m) */
     VT100_EVENT_XTERM_MOUSE,
     /** XTerm window operations (CSI ... t) */
@@ -59,12 +59,12 @@ typedef enum {
  * @brief Data for XTerm mouse tracking event.
  */
 typedef struct {
-    int button; /**< Mouse button or event code */
-    int x; /**< X position (column) */
-    int y; /**< Y position (row) */
-    int flags; /**< Modifier flags (shift, ctrl, meta) */
+    int button;   /**< Mouse button or event code */
+    int x;        /**< X position (column) */
+    int y;        /**< Y position (row) */
+    int flags;    /**< Modifier flags (shift, ctrl, meta) */
     int ext_mode; /**< 0=normal, 1=SGR (CSI < ... M/m) */
-    char final; /**< Final byte (M or m) */
+    char final;   /**< Final byte (M or m) */
 } vt100_xterm_mouse_t;
 
 /**
@@ -72,8 +72,8 @@ typedef struct {
  * @brief Data for XTerm window operation event (CSI ... t).
  */
 typedef struct {
-    int op; /**< Window operation code */
-    int params[4]; /**< Parameters (up to 4) */
+    int op;         /**< Window operation code */
+    int params[4];  /**< Parameters (up to 4) */
     int num_params; /**< Number of parameters */
 } vt100_xterm_winop_t;
 
@@ -83,8 +83,8 @@ typedef struct {
  */
 typedef struct {
     char data[VT100_MAX_OSC_STRING]; /**< Clipboard data (base64 or text) */
-    size_t length; /**< Length of data */
-    int is_overflow; /**< Set if truncated */
+    size_t length;                   /**< Length of data */
+    int is_overflow;                 /**< Set if truncated */
 } vt100_xterm_clipboard_t;
 
 /**
@@ -92,12 +92,12 @@ typedef struct {
  * @brief Data for a CSI (Control Sequence Introducer) event.
  */
 typedef struct {
-    char command; /**< Final byte (0x40-0x7E) */
-    int params[VT100_MAX_CSI_PARAMS]; /**< Parameters (default 0) */
-    int num_params; /**< Number of parameters */
+    char command;                                    /**< Final byte (0x40-0x7E) */
+    int params[VT100_MAX_CSI_PARAMS];                /**< Parameters (default 0) */
+    int num_params;                                  /**< Number of parameters */
     char intermediates[VT100_MAX_CSI_INTERMEDIATES]; /**< Intermediate bytes */
-    int num_intermediates; /**< Number of intermediate bytes */
-    char private_leader; /**< Private mode leader (e.g. '?', '>') */
+    int num_intermediates;                           /**< Number of intermediate bytes */
+    char private_leader;                             /**< Private mode leader (e.g. '?', '>') */
 } vt100_csi_t;
 
 /**
@@ -106,7 +106,7 @@ typedef struct {
  */
 typedef struct {
     char string[VT100_MAX_PM_STRING]; /**< Message string */
-    size_t length; /**< Length of string */
+    size_t length;                    /**< Length of string */
 } vt100_pm_t;
 
 /**
@@ -115,7 +115,7 @@ typedef struct {
  */
 typedef struct {
     char string[VT100_MAX_APC_STRING]; /**< Command string */
-    size_t length; /**< Length of string */
+    size_t length;                     /**< Length of string */
 } vt100_apc_t;
 
 /**
@@ -124,7 +124,7 @@ typedef struct {
  */
 typedef struct {
     char string[VT100_MAX_OSC_STRING]; /**< OSC string */
-    size_t length; /**< Length of string */
+    size_t length;                     /**< Length of string */
 } vt100_osc_t;
 
 /**
@@ -133,7 +133,7 @@ typedef struct {
  */
 typedef struct {
     char string[VT100_MAX_DCS_STRING]; /**< DCS string */
-    size_t length; /**< Length of string */
+    size_t length;                     /**< Length of string */
 } vt100_dcs_t;
 
 /**
@@ -143,16 +143,16 @@ typedef struct {
 typedef struct {
     vt100_event_type_t type; /**< Event type */
     union {
-        char printable; /**< Printable character */
-        char control; /**< Control character */
-        char escape; /**< ESC final byte */
-        vt100_csi_t csi; /**< CSI event data */
-        vt100_osc_t osc; /**< OSC event data */
-        vt100_dcs_t dcs; /**< DCS event data */
-        vt100_pm_t pm; /**< PM event data */
-        vt100_apc_t apc; /**< APC event data */
-        vt100_xterm_mouse_t xterm_mouse; /**< XTerm mouse event */
-        vt100_xterm_winop_t xterm_winop; /**< XTerm window op event */
+        char printable;                          /**< Printable character */
+        char control;                            /**< Control character */
+        char escape;                             /**< ESC final byte */
+        vt100_csi_t csi;                         /**< CSI event data */
+        vt100_osc_t osc;                         /**< OSC event data */
+        vt100_dcs_t dcs;                         /**< DCS event data */
+        vt100_pm_t pm;                           /**< PM event data */
+        vt100_apc_t apc;                         /**< APC event data */
+        vt100_xterm_mouse_t xterm_mouse;         /**< XTerm mouse event */
+        vt100_xterm_winop_t xterm_winop;         /**< XTerm window op event */
         vt100_xterm_clipboard_t xterm_clipboard; /**< XTerm clipboard event */
     } data;
 } vt100_event_t;
@@ -178,14 +178,14 @@ typedef void (*vt100_event_cb)(vt100_parser_t* parser, const vt100_event_t* even
  * Do not access fields directly; use API functions.
  */
 struct vt100_parser {
-    int state; /**< Internal state */
-    void* user; /**< User data pointer */
-    vt100_event_cb cb; /**< Event callback */
-    vt100_csi_t csi; /**< CSI state */
-    vt100_osc_t osc; /**< OSC state */
-    vt100_dcs_t dcs; /**< DCS state */
-    vt100_pm_t pm; /**< PM state */
-    vt100_apc_t apc; /**< APC state */
+    int state;             /**< Internal state */
+    void* user;            /**< User data pointer */
+    vt100_event_cb cb;     /**< Event callback */
+    vt100_csi_t csi;       /**< CSI state */
+    vt100_osc_t osc;       /**< OSC state */
+    vt100_dcs_t dcs;       /**< DCS state */
+    vt100_pm_t pm;         /**< PM state */
+    vt100_apc_t apc;       /**< APC state */
     char esc_intermediate; /**< ESC intermediate byte */
     /**
      * @name String sequence state (OSC/DCS/PM/APC)
@@ -193,13 +193,13 @@ struct vt100_parser {
      * These fields are used to track ESC/ST terminators and buffer overflows
      * for each string type, ensuring thread safety and correct event emission.
      */
-    int osc_esc_seen; /**< OSC: ESC seen before possible ST (\\) */
+    int osc_esc_seen;   /**< OSC: ESC seen before possible ST (\\) */
     int osc_overflowed; /**< OSC: Buffer overflowed, ignore until terminator */
-    int dcs_esc_seen; /**< DCS: ESC seen before possible ST (\\) */
+    int dcs_esc_seen;   /**< DCS: ESC seen before possible ST (\\) */
     int dcs_overflowed; /**< DCS: Buffer overflowed, ignore until terminator */
-    int pm_esc_seen; /**< PM: ESC seen before possible ST (\\) */
-    int pm_overflowed; /**< PM: Buffer overflowed, ignore until terminator */
-    int apc_esc_seen; /**< APC: ESC seen before possible ST (\\) */
+    int pm_esc_seen;    /**< PM: ESC seen before possible ST (\\) */
+    int pm_overflowed;  /**< PM: Buffer overflowed, ignore until terminator */
+    int apc_esc_seen;   /**< APC: ESC seen before possible ST (\\) */
     int apc_overflowed; /**< APC: Buffer overflowed, ignore until terminator */
 };
 
