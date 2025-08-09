@@ -30,42 +30,57 @@ All files are in the project root unless otherwise noted:
 
 ## Quick Start
 
-## Building with CMake
+### One-step build, install, and test
 
-This project supports building with CMake (recommended). You can enable
-optional documentation and test targets using CMake options.
-
-### Basic build (library only)
+You can use the provided `build.sh` script to perform a full clean build, install the library and header, run all tests, and show the installed files:
 
 ```sh
+./build.sh
+```
+
+This script will:
+
+- Remove any previous build directory for a clean build
+- Configure CMake with tests and documentation enabled
+- Build the library, test binary, and documentation
+- Install the static library and header to `build/install` (see below)
+- Run the unit tests (output: `All tests passed!` if successful)
+- Show the installed files using `tree -lh` (or `find` if `tree` is not available)
+
+### Manual CMake build (advanced)
+
+You can also build manually with CMake. Optional documentation and test targets can be enabled using CMake options:
+
+```sh
+# Basic build (library only):
 cmake -S . -B build
 cmake --build build
-```
 
-### Build with tests and documentation
-
-```sh
+# Build with tests and documentation:
 cmake -S . -B build -DBUILD_TESTS=ON -DBUILD_DOCS=ON
 cmake --build build
-```
 
-### Build only tests or docs
-
-```sh
-# Only tests:
+# Build only tests or docs:
 cmake -S . -B build -DBUILD_TESTS=ON
 cmake --build build
-
-# Only docs:
 cmake -S . -B build -DBUILD_DOCS=ON
 cmake --build build --target doc
 ```
 
-Test binary: `build/bin/vt100_test`
+Test binary: `build/bin/vt100_test` (not installed)
 Static library: `build/lib/libvt100.a`
 Documentation: `build/docs/reference/html/index.html`
 
-### Run tests
+### Install location
+
+When using `build.sh` or running `cmake --install build`, the following files are installed to `build/install`:
+
+- `build/install/include/vt100.h` (header)
+- `build/install/lib/libvt100.a` (static library)
+
+The test binary is not installed.
+
+### Run tests manually
 
 ```sh
 build/bin/vt100_test
