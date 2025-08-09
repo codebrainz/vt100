@@ -26,9 +26,9 @@ This checklist outlines suggested improvements and enhancements for the VT100 pa
 
 ## 5. Code Style & Maintenance
 
-- [ ] Remove redundant includes (e.g., duplicate `#include "vt100.h"` in `vt100.c`)
-- [ ] Remove unused static functions/variables
-- [ ] Consider error codes or error state in parser struct for unrecoverable errors
+- [x] Remove redundant includes (e.g., duplicate `#include "vt100.h"` in `vt100.c`)
+- [x] Remove unused static functions/variables
+- [ ] Consider error codes or error state in parser struct for unrecoverable errors (optional, not yet implemented)
 
 ## 6. Documentation
 

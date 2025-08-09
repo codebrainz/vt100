@@ -1,5 +1,3 @@
-#include "vt100.h"
-#include <stdio.h>
 /*
  * vt100.c - Incremental VT100 parser implementation
  *
@@ -11,8 +9,11 @@
  * handler is responsible for updating the parser state and emitting
  * events as appropriate. See vt100.h for API documentation.
  */
+
 #include "vt100.h"
+
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
