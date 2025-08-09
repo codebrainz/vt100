@@ -1,3 +1,4 @@
 *.a
 *.o
 /tests/vt100_test
+/docs/reference/

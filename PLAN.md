@@ -32,8 +32,11 @@ This checklist outlines suggested improvements and enhancements for the VT100 pa
 
 ## 6. Documentation
 
-- [ ] Add usage examples for XTerm events in README
-- [ ] Document overflow/truncation behavior for all buffers and parameter arrays
+- [x] Add Doxygen support: create Doxyfile and configure for HTML output
+- [x] Update Makefile(s) to add a 'doc' target that generates Doxygen HTML documentation
+- [x] Add Doxygen comments to all public headers and functions (vt100.h, etc.)
+- [x] Add usage examples for XTerm events in README
+- [x] Document overflow/truncation behavior for all buffers and parameter arrays
 
 ## 7. Build System
 

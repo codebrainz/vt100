@@ -1,0 +1,13 @@
+# Doxyfile for VT100 Project
+
+# Minimal config for HTML output only
+
+PROJECT_NAME      = VT100 Parser
+OUTPUT_DIRECTORY  = docs/reference
+GENERATE_HTML     = YES
+GENERATE_LATEX    = NO
+INPUT             = src
+FILE_PATTERNS     = *.h *.c
+RECURSIVE         = YES
+EXTRACT_ALL       = YES
+QUIET             = YES

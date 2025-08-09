@@ -54,7 +54,33 @@ vt100_parser_feed(&parser, data, len);
 - **CSI parameters:** Only the first 16 parameters are stored; extra parameters are ignored.
 - **OSC/DCS/PM/APC strings:** If a string exceeds the buffer size (128 bytes including null terminator), it is truncated and the event's `is_overflow`/`is_overflowed` field is set.
 
+### XTerm Event Usage Example
+
+To handle XTerm mouse and clipboard events, check the event type in your callback:
+
+```c
+void my_callback(vt100_parser_t *parser, const vt100_event_t *event, void *user) {
+    switch (event->type) {
+    case VT100_EVENT_XTERM_MOUSE:
+        // Access event->data.xterm_mouse fields
+        break;
+    case VT100_EVENT_XTERM_CLIPBOARD:
+        // Access event->data.xterm_clipboard.data
+        break;
+    // ... handle other event types ...
+    }
+}
+```
+
 See the unit tests in `tests/vt100_test.c` for more usage examples.
+
+## Documentation
+
+To generate API documentation (HTML) with Doxygen:
+
+    make doc
+
+The generated documentation will be in `docs/reference/html/index.html`.
 
 ## Requirements
 
