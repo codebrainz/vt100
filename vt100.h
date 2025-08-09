@@ -1,4 +1,3 @@
-
 /**
  * @file vt100.h
  * @brief Incremental VT100/ANSI escape sequence parser interface.
