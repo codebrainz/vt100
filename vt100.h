@@ -17,30 +17,44 @@
 extern "C" {
 #endif
 
-#define VT100_MAX_CSI_PARAMS 16
 /**
- * Maximum number of CSI parameters supported. If a sequence contains more than this,
- * extra parameters are ignored and only the first 16 are stored in the event.
+ * @def VT100_MAX_CSI_PARAMS
+ * @brief Maximum number of CSI parameters supported.
+ * If a sequence contains more than this, extra parameters are ignored and only the first 16 are stored in the event.
+ */
+#define VT100_MAX_CSI_PARAMS 16
+
+/**
+ * @def VT100_MAX_CSI_INTERMEDIATES
+ * @brief Maximum number of CSI intermediate bytes supported.
  */
 #define VT100_MAX_CSI_INTERMEDIATES 4
+
 /**
- * Maximum length of OSC string (including null terminator). If the string exceeds this length,
- * it is truncated and the event's is_overflow/is_overflowed field is set.
+ * @def VT100_MAX_OSC_STRING
+ * @brief Maximum length of OSC string (including null terminator).
+ * If the string exceeds this length, it is truncated and the event's is_overflow/is_overflowed field is set.
  */
 #define VT100_MAX_OSC_STRING 128
+
 /**
- * Maximum length of DCS string (including null terminator). If the string exceeds this length,
- * it is truncated and the event's is_overflow/is_overflowed field is set.
+ * @def VT100_MAX_DCS_STRING
+ * @brief Maximum length of DCS string (including null terminator).
+ * If the string exceeds this length, it is truncated and the event's is_overflow/is_overflowed field is set.
  */
 #define VT100_MAX_DCS_STRING 128
+
 /**
- * Maximum length of PM string (including null terminator). If the string exceeds this length,
- * it is truncated and the event's is_overflow/is_overflowed field is set.
+ * @def VT100_MAX_PM_STRING
+ * @brief Maximum length of PM string (including null terminator).
+ * If the string exceeds this length, it is truncated and the event's is_overflow/is_overflowed field is set.
  */
 #define VT100_MAX_PM_STRING 128
+
 /**
- * Maximum length of APC string (including null terminator). If the string exceeds this length,
- * it is truncated and the event's is_overflow/is_overflowed field is set.
+ * @def VT100_MAX_APC_STRING
+ * @brief Maximum length of APC string (including null terminator).
+ * If the string exceeds this length, it is truncated and the event's is_overflow/is_overflowed field is set.
  */
 #define VT100_MAX_APC_STRING 128
 
@@ -188,37 +202,32 @@ typedef void (*vt100_event_cb)(vt100_parser_t* parser, const vt100_event_t* even
 /**
  * @struct vt100_parser
  * @brief Parser state structure (opaque to users).
- *
- * Do not access fields directly; use API functions.
+ * @note Do not access fields directly; use API functions.
  */
 struct vt100_parser {
-    int state;             /**< Internal state */
-    void* user;            /**< User data pointer */
-    vt100_event_cb cb;     /**< Event callback */
-    vt100_csi_t csi;       /**< CSI state */
-    vt100_osc_t osc;       /**< OSC state */
-    vt100_dcs_t dcs;       /**< DCS state */
-    vt100_pm_t pm;         /**< PM state */
-    vt100_apc_t apc;       /**< APC state */
-    char esc_intermediate; /**< ESC intermediate byte */
-    /*
-     * @note This struct is opaque to users. Do not access fields directly;
-     * use the API functions provided.
-     */
     /**
-     * @name String sequence state (OSC/DCS/PM/APC)
-     * @brief Internal state for robust string parsing and overflow handling.
-     * These fields are used to track ESC/ST terminators and buffer overflows
-     * for each string type, ensuring thread safety and correct event emission.
+     * @name Internal state
+     * @{
+     * @private
      */
-    int osc_esc_seen;   /**< OSC: ESC seen before possible ST (\\) */
-    int osc_overflowed; /**< OSC: Buffer overflowed, ignore until terminator */
-    int dcs_esc_seen;   /**< DCS: ESC seen before possible ST (\\) */
-    int dcs_overflowed; /**< DCS: Buffer overflowed, ignore until terminator */
-    int pm_esc_seen;    /**< PM: ESC seen before possible ST (\\) */
-    int pm_overflowed;  /**< PM: Buffer overflowed, ignore until terminator */
-    int apc_esc_seen;   /**< APC: ESC seen before possible ST (\\) */
-    int apc_overflowed; /**< APC: Buffer overflowed, ignore until terminator */
+    int state;             // parser state machine
+    void* user;            // user data pointer
+    vt100_event_cb cb;     // event callback
+    vt100_csi_t csi;       // CSI state
+    vt100_osc_t osc;       // OSC state
+    vt100_dcs_t dcs;       // DCS state
+    vt100_pm_t pm;         // PM state
+    vt100_apc_t apc;       // APC state
+    char esc_intermediate; // ESC intermediate byte
+    int osc_esc_seen;      // OSC: ESC seen before possible ST
+    int osc_overflowed;    // OSC: buffer overflowed
+    int dcs_esc_seen;      // DCS: ESC seen before possible ST
+    int dcs_overflowed;    // DCS: buffer overflowed
+    int pm_esc_seen;       // PM: ESC seen before possible ST
+    int pm_overflowed;     // PM: buffer overflowed
+    int apc_esc_seen;      // APC: ESC seen before possible ST
+    int apc_overflowed;    // APC: buffer overflowed
+    /** @} */
 };
 
 /**
@@ -247,6 +256,7 @@ void vt100_parser_reset(vt100_parser_t* parser);
 void vt100_parser_feed(vt100_parser_t* parser, const char* data, size_t len);
 
 #ifdef __cplusplus
+/** @} */
 }
 #endif
 
