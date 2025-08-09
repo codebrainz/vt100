@@ -9,8 +9,8 @@ This checklist outlines suggested improvements and enhancements for the VT100 pa
 
 ## 2. Event Emission Consistency
 
-- [ ] Ensure all error/overflow cases emit the correct event (with flags set)
-- [ ] Emit `VT100_EVENT_IGNORE` for all unhandled/ignored sequences for better diagnostics
+- [x] Ensure all error/overflow cases emit the correct event (with flags set). Code was already correct; added clarifying comments.
+- [x] Emit `VT100_EVENT_IGNORE` for all unhandled/ignored sequences for better diagnostics. Code was already correct; added clarifying comments.
 
 ## 3. XTerm Event Parsing
 

@@ -97,6 +97,7 @@ static void handle_ground(vt100_parser_t* p, char ch)
         memset(&p->dcs, 0, sizeof(p->dcs));
         return;
     } else if ((unsigned char)ch == 0x98) { // SOS (not handled)
+        // Emit IGNORE for unsupported SOS sequence
         ev.type = VT100_EVENT_IGNORE;
         emit_event(p, &ev);
         return;
@@ -120,6 +121,7 @@ static void handle_ground(vt100_parser_t* p, char ch)
         ev.data.control = ch;
         emit_event(p, &ev);
     } else {
+        // Emit IGNORE for truly unhandled input (not overflow/truncation)
         ev.type = VT100_EVENT_IGNORE;
         emit_event(p, &ev);
     }
@@ -317,7 +319,7 @@ static void handle_osc_string(vt100_parser_t* p, char ch)
 {
     // OSC is terminated by BEL or ST (ESC \\)
     if (p->osc_overflowed) {
-        // Ignore all input until BEL or ST
+        // Buffer overflow: emit truncated event (already done), ignore input until terminator
         if (ch == 0x07) {
             p->osc_overflowed = 0;
             p->state = S_GROUND;
@@ -417,6 +419,7 @@ static void handle_dcs_string(vt100_parser_t* p, char ch)
 {
     // DCS is terminated by BEL or ST (ESC \\)
     if (p->dcs_overflowed) {
+        // Buffer overflow: emit truncated event (already done), ignore input until terminator
         if (ch == 0x07) {
             p->dcs_overflowed = 0;
             p->state = S_GROUND;
@@ -474,6 +477,7 @@ static void handle_pm_string(vt100_parser_t* p, char ch)
 {
     // PM is terminated by BEL or ST (ESC \\)
     if (p->pm_overflowed) {
+        // Buffer overflow: emit truncated event (already done), ignore input until terminator
         if (ch == 0x07) {
             p->pm_overflowed = 0;
             p->state = S_GROUND;
@@ -532,6 +536,7 @@ static void handle_apc_string(vt100_parser_t* p, char ch)
 {
     // APC is terminated by BEL or ST (ESC \\)
     if (p->apc_overflowed) {
+        // Buffer overflow: emit truncated event (already done), ignore input until terminator
         if (ch == 0x07) {
             p->apc_overflowed = 0;
             p->state = S_GROUND;
