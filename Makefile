@@ -1,7 +1,7 @@
 
 # === Variables ===
-SRC_DIR      := src
-TESTS_DIR    := tests
+SRC_DIR      := .
+TESTS_DIR    := .
 BUILD_DIR    := build
 LIB          := $(BUILD_DIR)/libvt100.a
 LIB_OBJS     := $(BUILD_DIR)/vt100.o
@@ -29,14 +29,14 @@ $(BUILD_DIR):
 $(LIB): $(LIB_OBJS) | $(BUILD_DIR)
 	ar rcs $@ $^
 
-$(BUILD_DIR)/vt100.o: $(SRC_DIR)/vt100.c $(SRC_DIR)/vt100.h | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILD_DIR)/vt100.o: vt100.c vt100.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c vt100.c -o $@
 
 $(TEST): $(TEST_OBJS) $(LIB) | $(BUILD_DIR)
 	$(CC) $(TEST_CFLAGS) -o $@ $^ -L$(BUILD_DIR) -lvt100
 
-$(BUILD_DIR)/vt100_test.o: $(TESTS_DIR)/vt100_test.c | $(BUILD_DIR)
-	$(CC) $(TEST_CFLAGS) -c $< -o $@
+$(BUILD_DIR)/vt100_test.o: vt100_test.c | $(BUILD_DIR)
+	$(CC) $(TEST_CFLAGS) -c vt100_test.c -o $@
 
 # === Utility Targets ===
 
@@ -60,7 +60,7 @@ clean:
 	rm -rf $(BUILD_DIR)/docs/reference/*
 
 format:
-	find src tests -name '*.c' -o -name '*.h' | xargs clang-format -i
+	find . -maxdepth 1 -name '*.c' -o -name '*.h' | xargs clang-format -i
 
 # === Test & Analysis ===
 test: $(TEST)
@@ -72,22 +72,22 @@ valgrind-test: $(TEST)
 # === Documentation ===
 docs: | $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)/docs/reference
-	doxygen docs/Doxyfile
+	doxygen Doxyfile
 
 # === Distribution ===
 
 dist: | $(BUILD_DIR)
-	@name=vt100-$(shell date +%Y%m%d); \
-	tar --exclude-vcs --exclude='*.o' --exclude='*.a' --exclude='*.swp' --exclude='*.pyc' --exclude='*.ipynb' -cJf $(BUILD_DIR)/$$name.tar.xz \
-		README.md LICENSE.md Makefile src/ tests/ docs/ PLAN.md; \
-	echo "Created: $(BUILD_DIR)/$$name.tar.xz"
+       @name=vt100-$(shell date +%Y%m%d); \
+       tar --exclude-vcs --exclude='*.o' --exclude='*.a' --exclude='*.swp' --exclude='*.pyc' --exclude='*.ipynb' -cJf $(BUILD_DIR)/$$name.tar.xz \
+	       README.md LICENSE.md Makefile vt100.c vt100.h vt100_test.c Doxyfile docs/ PLAN.md; \
+       echo "Created: $(BUILD_DIR)/$$name.tar.xz"
 
 
 # === Install/Uninstall ===
 install: all
 	mkdir -p $(INCLUDEDIR)
 	mkdir -p $(LIBDIR)
-	cp src/vt100.h $(INCLUDEDIR)/vt100.h
+	cp vt100.h $(INCLUDEDIR)/vt100.h
 	cp $(BUILD_DIR)/libvt100.a $(LIBDIR)/libvt100.a
 	echo "Installed libvt100.a to $(LIBDIR) and vt100.h to $(INCLUDEDIR)"
 

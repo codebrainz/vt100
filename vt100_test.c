@@ -7,7 +7,7 @@
  * the last event and a counter to verify the number of events.
  */
 
-#include "../src/vt100.h"
+#include "vt100.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
