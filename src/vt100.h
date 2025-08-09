@@ -18,6 +18,19 @@
 extern "C" {
 #endif
 
+/** Maximum number of CSI parameters supported */
+#define VT100_MAX_CSI_PARAMS 16
+/** Maximum number of CSI intermediate bytes supported */
+#define VT100_MAX_CSI_INTERMEDIATES 4
+/** Maximum length of OSC string (including null terminator) */
+#define VT100_MAX_OSC_STRING 128
+/** Maximum length of DCS string (including null terminator) */
+#define VT100_MAX_DCS_STRING 128
+/** Maximum length of PM string (including null terminator) */
+#define VT100_MAX_PM_STRING 128
+/** Maximum length of APC string (including null terminator) */
+#define VT100_MAX_APC_STRING 128
+
 /**
  * @enum vt100_event_type_t
  * @brief Types of events emitted by the VT100 parser.
@@ -32,21 +45,47 @@ typedef enum {
     VT100_EVENT_DCS, /**< Device Control String (DCS) */
     VT100_EVENT_PM, /**< Privacy Message (ESC ^ ... ST) */
     VT100_EVENT_APC, /**< Application Program Command (ESC _ ... ST) */
+    /** XTerm mouse tracking (CSI M, CSI < ... M/m) */
+    VT100_EVENT_XTERM_MOUSE,
+    /** XTerm window operations (CSI ... t) */
+    VT100_EVENT_XTERM_WINOP,
+    /** XTerm clipboard (OSC 52) */
+    VT100_EVENT_XTERM_CLIPBOARD,
     VT100_EVENT_IGNORE /**< Unrecognized or ignored input */
 } vt100_event_type_t;
 
-/** Maximum number of CSI parameters supported */
-#define VT100_MAX_CSI_PARAMS 16
-/** Maximum number of CSI intermediate bytes supported */
-#define VT100_MAX_CSI_INTERMEDIATES 4
-/** Maximum length of OSC string (including null terminator) */
-#define VT100_MAX_OSC_STRING 128
-/** Maximum length of DCS string (including null terminator) */
-#define VT100_MAX_DCS_STRING 128
-/** Maximum length of PM string (including null terminator) */
-#define VT100_MAX_PM_STRING 128
-/** Maximum length of APC string (including null terminator) */
-#define VT100_MAX_APC_STRING 128
+/**
+ * @struct vt100_xterm_mouse_t
+ * @brief Data for XTerm mouse tracking event.
+ */
+typedef struct {
+    int button; /**< Mouse button or event code */
+    int x; /**< X position (column) */
+    int y; /**< Y position (row) */
+    int flags; /**< Modifier flags (shift, ctrl, meta) */
+    int ext_mode; /**< 0=normal, 1=SGR (CSI < ... M/m) */
+    char final; /**< Final byte (M or m) */
+} vt100_xterm_mouse_t;
+
+/**
+ * @struct vt100_xterm_winop_t
+ * @brief Data for XTerm window operation event (CSI ... t).
+ */
+typedef struct {
+    int op; /**< Window operation code */
+    int params[4]; /**< Parameters (up to 4) */
+    int num_params; /**< Number of parameters */
+} vt100_xterm_winop_t;
+
+/**
+ * @struct vt100_xterm_clipboard_t
+ * @brief Data for XTerm clipboard OSC 52 event.
+ */
+typedef struct {
+    char data[VT100_MAX_OSC_STRING]; /**< Clipboard data (base64 or text) */
+    size_t length; /**< Length of data */
+    int is_overflow; /**< Set if truncated */
+} vt100_xterm_clipboard_t;
 
 /**
  * @struct vt100_csi_t
@@ -112,6 +151,9 @@ typedef struct {
         vt100_dcs_t dcs; /**< DCS event data */
         vt100_pm_t pm; /**< PM event data */
         vt100_apc_t apc; /**< APC event data */
+        vt100_xterm_mouse_t xterm_mouse; /**< XTerm mouse event */
+        vt100_xterm_winop_t xterm_winop; /**< XTerm window op event */
+        vt100_xterm_clipboard_t xterm_clipboard; /**< XTerm clipboard event */
     } data;
 } vt100_event_t;
 

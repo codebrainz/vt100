@@ -1,3 +1,19 @@
+// ...existing code...
+#include "../src/vt100.h"
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+// Helper callback for test_xterm_mouse
+static vt100_event_t xterm_mouse_events[8];
+static int xterm_mouse_count = 0;
+static void xterm_mouse_cb(vt100_parser_t* parser, const vt100_event_t* ev, void* user)
+{
+    (void)parser;
+    (void)user;
+    if (xterm_mouse_count < 8)
+        xterm_mouse_events[xterm_mouse_count] = *ev;
+    xterm_mouse_count++;
+}
 // vt100_test.c - Unit tests for vt100 parser
 #include "../src/vt100.h"
 #include <assert.h>
@@ -260,6 +276,54 @@ void test_incremental()
     assert(last_event.data.csi.params[0] == 31);
 }
 
+// XTerm event tests
+void test_xterm_mouse()
+{
+    // X10 mouse tracking: CSI M!!!
+    reset_state();
+    vt100_parser_t parser;
+    vt100_parser_t* p = &parser;
+    xterm_mouse_count = 0;
+    vt100_parser_init(p, xterm_mouse_cb, 0);
+    FEED("\x1B[M!!!");
+    assert(xterm_mouse_count == 1);
+    assert(xterm_mouse_events[0].type == VT100_EVENT_XTERM_MOUSE);
+
+    // SGR mouse tracking: CSI <0;10;20M
+    reset_state();
+    xterm_mouse_count = 0;
+    vt100_parser_init(p, xterm_mouse_cb, 0);
+    FEED("\x1B[<0;10;20M");
+    assert(xterm_mouse_count == 1);
+    assert(xterm_mouse_events[0].type == VT100_EVENT_XTERM_MOUSE);
+}
+
+void test_xterm_winop()
+{
+    reset_state();
+    vt100_parser_t parser;
+    vt100_parser_t* p = &parser;
+    vt100_parser_init(p, test_cb, 0);
+    // CSI 2 t (window op: iconify window)
+    FEED("\x1B[2t");
+    assert(event_count == 1);
+    assert(last_event.type == VT100_EVENT_XTERM_WINOP);
+    assert(last_event.data.xterm_winop.op == 2);
+}
+
+void test_xterm_clipboard()
+{
+    reset_state();
+    vt100_parser_t parser;
+    vt100_parser_t* p = &parser;
+    vt100_parser_init(p, test_cb, 0);
+    // OSC 52 ; ; base64data BEL
+    FEED("\x1B]52;;SGVsbG8gd29ybGQ=\x07");
+    assert(event_count == 1);
+    assert(last_event.type == VT100_EVENT_XTERM_CLIPBOARD);
+    assert(strncmp(last_event.data.xterm_clipboard.data, "52;;SGVsbG8gd29ybGQ=", 20) == 0);
+}
+
 int main(void)
 {
     test_printable();
@@ -278,6 +342,9 @@ int main(void)
     test_pm_apc();
     test_pm_apc_c1();
     test_incremental_osc_st();
+    test_xterm_mouse();
+    test_xterm_winop();
+    test_xterm_clipboard();
     // Main: run all tests and print summary
     printf("All tests passed!\n");
     return 0;

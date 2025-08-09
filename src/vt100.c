@@ -1,4 +1,5 @@
 #include "vt100.h"
+#include <stdio.h>
 /*
  * vt100.c - Incremental VT100 parser implementation
  *
@@ -188,8 +189,29 @@ static void handle_csi_entry(vt100_parser_t* p, char ch)
     } else if (ch >= 0x40 && ch <= 0x7E) {
         p->csi.command = ch;
         vt100_event_t ev = { 0 };
-        ev.type = VT100_EVENT_CSI;
-        ev.data.csi = p->csi;
+        // XTerm mouse tracking: CSI M (X10) or CSI < ... M/m (SGR)
+        if (ch == 'M' && p->csi.num_intermediates == 0 && p->csi.num_params == 0) {
+            ev.type = VT100_EVENT_XTERM_MOUSE;
+            emit_event(p, &ev);
+            p->state = S_GROUND;
+            // Skipping of next 3 bytes is handled in vt100_parser_feed
+            return;
+        } else if ((ch == 'm' || ch == 'M') && p->csi.private_leader == '<') {
+            ev.type = VT100_EVENT_XTERM_MOUSE;
+            emit_event(p, &ev);
+            p->state = S_GROUND;
+            return;
+        } else if (ch == 't') {
+            ev.type = VT100_EVENT_XTERM_WINOP;
+            ev.data.xterm_winop.op = p->csi.params[0];
+            ev.data.xterm_winop.num_params = p->csi.num_params;
+            for (int i = 0; i < p->csi.num_params && i < 4; ++i) {
+                ev.data.xterm_winop.params[i] = p->csi.params[i];
+            }
+        } else {
+            ev.type = VT100_EVENT_CSI;
+            ev.data.csi = p->csi;
+        }
         emit_event(p, &ev);
         p->state = S_GROUND;
     } else {
@@ -232,6 +254,25 @@ static void handle_csi_param(vt100_parser_t* p, char ch)
         }
         p->csi.command = ch;
         vt100_event_t ev = { 0 };
+        // SGR mouse mode: CSI < ... M/m
+        if ((ch == 'M' || ch == 'm') && p->csi.private_leader == '<') {
+            ev.type = VT100_EVENT_XTERM_MOUSE;
+            emit_event(p, &ev);
+            p->state = S_GROUND;
+            return;
+        }
+        // XTerm window operation: CSI ... t
+        if (ch == 't') {
+            ev.type = VT100_EVENT_XTERM_WINOP;
+            ev.data.xterm_winop.op = p->csi.params[0];
+            ev.data.xterm_winop.num_params = p->csi.num_params;
+            for (int i = 0; i < p->csi.num_params && i < 4; ++i) {
+                ev.data.xterm_winop.params[i] = p->csi.params[i];
+            }
+            emit_event(p, &ev);
+            p->state = S_GROUND;
+            return;
+        }
         ev.type = VT100_EVENT_CSI;
         ev.data.csi = p->csi;
         emit_event(p, &ev);
@@ -292,24 +333,45 @@ static void handle_osc_string(vt100_parser_t* p, char ch)
         }
         return;
     }
+    int is_clipboard = 0;
+    if (p->osc.length >= 3 && p->osc.string[0] == '5' && p->osc.string[1] == '2' && p->osc.string[2] == ';') {
+        is_clipboard = 1;
+    }
     if (ch == 0x07) {
         vt100_event_t ev = { 0 };
-        ev.type = VT100_EVENT_OSC;
-        p->osc.string[p->osc.length] = 0;
-        ev.data.osc = p->osc;
-        ev.data.osc.length = p->osc.length;
+        if (is_clipboard) {
+            ev.type = VT100_EVENT_XTERM_CLIPBOARD;
+            size_t n = p->osc.length < VT100_MAX_OSC_STRING ? p->osc.length : VT100_MAX_OSC_STRING - 1;
+            memcpy(ev.data.xterm_clipboard.data, p->osc.string, n);
+            ev.data.xterm_clipboard.data[n] = 0;
+            ev.data.xterm_clipboard.length = n;
+            ev.data.xterm_clipboard.is_overflow = 0;
+        } else {
+            ev.type = VT100_EVENT_OSC;
+            p->osc.string[p->osc.length] = 0;
+            ev.data.osc = p->osc;
+            ev.data.osc.length = p->osc.length;
+        }
         emit_event(p, &ev);
         p->state = S_GROUND;
         p->osc_esc_seen = 0;
     } else if (ch == 0x1B) {
         p->osc_esc_seen = 1;
     } else if (p->osc_esc_seen && ch == '\\') {
-        // ESC \\ (ST) terminator
         vt100_event_t ev = { 0 };
-        ev.type = VT100_EVENT_OSC;
-        p->osc.string[p->osc.length] = 0;
-        ev.data.osc = p->osc;
-        ev.data.osc.length = p->osc.length;
+        if (is_clipboard) {
+            ev.type = VT100_EVENT_XTERM_CLIPBOARD;
+            size_t n = p->osc.length < VT100_MAX_OSC_STRING ? p->osc.length : VT100_MAX_OSC_STRING - 1;
+            memcpy(ev.data.xterm_clipboard.data, p->osc.string, n);
+            ev.data.xterm_clipboard.data[n] = 0;
+            ev.data.xterm_clipboard.length = n;
+            ev.data.xterm_clipboard.is_overflow = 0;
+        } else {
+            ev.type = VT100_EVENT_OSC;
+            p->osc.string[p->osc.length] = 0;
+            ev.data.osc = p->osc;
+            ev.data.osc.length = p->osc.length;
+        }
         emit_event(p, &ev);
         p->state = S_GROUND;
         p->osc_esc_seen = 0;
@@ -318,12 +380,20 @@ static void handle_osc_string(vt100_parser_t* p, char ch)
         if (p->osc.length < VT100_MAX_OSC_STRING - 1) {
             p->osc.string[p->osc.length++] = ch;
         } else {
-            // Buffer overflow: emit truncated event and ignore until terminator
             vt100_event_t ev = { 0 };
-            ev.type = VT100_EVENT_OSC;
-            p->osc.string[p->osc.length] = 0;
-            ev.data.osc = p->osc;
-            ev.data.osc.length = p->osc.length;
+            if (is_clipboard) {
+                ev.type = VT100_EVENT_XTERM_CLIPBOARD;
+                size_t n = p->osc.length < VT100_MAX_OSC_STRING ? p->osc.length : VT100_MAX_OSC_STRING - 1;
+                memcpy(ev.data.xterm_clipboard.data, p->osc.string, n);
+                ev.data.xterm_clipboard.data[n] = 0;
+                ev.data.xterm_clipboard.length = n;
+                ev.data.xterm_clipboard.is_overflow = 1;
+            } else {
+                ev.type = VT100_EVENT_OSC;
+                p->osc.string[p->osc.length] = 0;
+                ev.data.osc = p->osc;
+                ev.data.osc.length = p->osc.length;
+            }
             emit_event(p, &ev);
             p->osc_overflowed = 1;
         }
@@ -519,8 +589,17 @@ static void handle_apc_string(vt100_parser_t* p, char ch)
  */
 void vt100_parser_feed(vt100_parser_t* p, const char* data, size_t len)
 {
-    for (size_t i = 0; i < len; ++i) {
+    size_t i = 0;
+    while (i < len) {
         char ch = data[i];
+        if (p->state == S_CSI_ENTRY && ch == 'M' && p->csi.num_intermediates == 0 && p->csi.num_params == 0) {
+            vt100_event_t ev = { 0 };
+            ev.type = VT100_EVENT_XTERM_MOUSE;
+            emit_event(p, &ev);
+            p->state = S_GROUND;
+            i += 4; // 'M' + 3 bytes
+            continue;
+        }
         switch (p->state) {
         case S_GROUND:
             handle_ground(p, ch);
@@ -553,5 +632,6 @@ void vt100_parser_feed(vt100_parser_t* p, const char* data, size_t len)
             handle_apc_string(p, ch);
             break;
         }
+        i++;
     }
 }
