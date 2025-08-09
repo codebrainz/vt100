@@ -9,6 +9,7 @@ application that needs to interpret terminal control codes.
 - Incremental, event-driven parsing of VT100/ANSI escape sequences
 - No dynamic memory allocation required
 - Supports CSI, OSC, DCS, PM, APC, and standard control/printable characters
+- Robust handling of buffer/parameter overflows: string buffers (OSC/DCS/PM/APC) are truncated if too long, and CSI parameter arrays are limited to 16 entries (extra parameters are ignored)
 - Simple callback-based API
 - Thorough unit test coverage
 
@@ -47,6 +48,11 @@ vt100_parser_t parser;
 vt100_parser_init(&parser, my_callback, NULL);
 vt100_parser_feed(&parser, data, len);
 ```
+
+### Buffer and Parameter Limits
+
+- **CSI parameters:** Only the first 16 parameters are stored; extra parameters are ignored.
+- **OSC/DCS/PM/APC strings:** If a string exceeds the buffer size (128 bytes including null terminator), it is truncated and the event's `is_overflow`/`is_overflowed` field is set.
 
 See the unit tests in `tests/vt100_test.c` for more usage examples.
 

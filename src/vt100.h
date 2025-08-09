@@ -18,17 +18,31 @@
 extern "C" {
 #endif
 
-/** Maximum number of CSI parameters supported */
 #define VT100_MAX_CSI_PARAMS 16
-/** Maximum number of CSI intermediate bytes supported */
+/**
+ * Maximum number of CSI parameters supported. If a sequence contains more than this,
+ * extra parameters are ignored and only the first 16 are stored in the event.
+ */
 #define VT100_MAX_CSI_INTERMEDIATES 4
-/** Maximum length of OSC string (including null terminator) */
+/**
+ * Maximum length of OSC string (including null terminator). If the string exceeds this length,
+ * it is truncated and the event's is_overflow/is_overflowed field is set.
+ */
 #define VT100_MAX_OSC_STRING 128
-/** Maximum length of DCS string (including null terminator) */
+/**
+ * Maximum length of DCS string (including null terminator). If the string exceeds this length,
+ * it is truncated and the event's is_overflow/is_overflowed field is set.
+ */
 #define VT100_MAX_DCS_STRING 128
-/** Maximum length of PM string (including null terminator) */
+/**
+ * Maximum length of PM string (including null terminator). If the string exceeds this length,
+ * it is truncated and the event's is_overflow/is_overflowed field is set.
+ */
 #define VT100_MAX_PM_STRING 128
-/** Maximum length of APC string (including null terminator) */
+/**
+ * Maximum length of APC string (including null terminator). If the string exceeds this length,
+ * it is truncated and the event's is_overflow/is_overflowed field is set.
+ */
 #define VT100_MAX_APC_STRING 128
 
 /**
@@ -82,9 +96,9 @@ typedef struct {
  * @brief Data for XTerm clipboard OSC 52 event.
  */
 typedef struct {
-    char data[VT100_MAX_OSC_STRING]; /**< Clipboard data (base64 or text) */
-    size_t length;                   /**< Length of data */
-    int is_overflow;                 /**< Set if truncated */
+    char data[VT100_MAX_OSC_STRING]; /**< Clipboard data (base64 or text). May be truncated if too long. */
+    size_t length;                   /**< Length of data (not including null terminator) */
+    int is_overflow;                 /**< Set if truncated due to buffer limit */
 } vt100_xterm_clipboard_t;
 
 /**
@@ -105,8 +119,8 @@ typedef struct {
  * @brief Data for a PM (Privacy Message) event.
  */
 typedef struct {
-    char string[VT100_MAX_PM_STRING]; /**< Message string */
-    size_t length;                    /**< Length of string */
+    char string[VT100_MAX_PM_STRING]; /**< Message string (may be truncated if too long) */
+    size_t length;                    /**< Length of string (not including null terminator) */
 } vt100_pm_t;
 
 /**
@@ -114,8 +128,8 @@ typedef struct {
  * @brief Data for an APC (Application Program Command) event.
  */
 typedef struct {
-    char string[VT100_MAX_APC_STRING]; /**< Command string */
-    size_t length;                     /**< Length of string */
+    char string[VT100_MAX_APC_STRING]; /**< Command string (may be truncated if too long) */
+    size_t length;                     /**< Length of string (not including null terminator) */
 } vt100_apc_t;
 
 /**
@@ -123,8 +137,8 @@ typedef struct {
  * @brief Data for an OSC (Operating System Command) event.
  */
 typedef struct {
-    char string[VT100_MAX_OSC_STRING]; /**< OSC string */
-    size_t length;                     /**< Length of string */
+    char string[VT100_MAX_OSC_STRING]; /**< OSC string (may be truncated if too long) */
+    size_t length;                     /**< Length of string (not including null terminator) */
 } vt100_osc_t;
 
 /**
@@ -132,8 +146,8 @@ typedef struct {
  * @brief Data for a DCS (Device Control String) event.
  */
 typedef struct {
-    char string[VT100_MAX_DCS_STRING]; /**< DCS string */
-    size_t length;                     /**< Length of string */
+    char string[VT100_MAX_DCS_STRING]; /**< DCS string (may be truncated if too long) */
+    size_t length;                     /**< Length of string (not including null terminator) */
 } vt100_dcs_t;
 
 /**
@@ -154,6 +168,7 @@ typedef struct {
         vt100_xterm_mouse_t xterm_mouse;         /**< XTerm mouse event */
         vt100_xterm_winop_t xterm_winop;         /**< XTerm window op event */
         vt100_xterm_clipboard_t xterm_clipboard; /**< XTerm clipboard event */
+        /* Only the member corresponding to the event type is valid. */
     } data;
 } vt100_event_t;
 
@@ -187,6 +202,10 @@ struct vt100_parser {
     vt100_pm_t pm;         /**< PM state */
     vt100_apc_t apc;       /**< APC state */
     char esc_intermediate; /**< ESC intermediate byte */
+    /*
+     * @note This struct is opaque to users. Do not access fields directly;
+     * use the API functions provided.
+     */
     /**
      * @name String sequence state (OSC/DCS/PM/APC)
      * @brief Internal state for robust string parsing and overflow handling.

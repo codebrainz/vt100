@@ -4,8 +4,8 @@ This checklist outlines suggested improvements and enhancements for the VT100 pa
 
 ## 1. Buffer Overflow Handling
 
-- [ ] Make buffer/parameter overflow behavior more visible (e.g., log warning or document clearly)
-- [ ] Document CSI parameter truncation (max 16 params) in code and README
+- [x] Make buffer/parameter overflow behavior more visible (documented in code and README; warning comments in code)
+- [x] Document CSI parameter truncation (max 16 params) in code and README
 
 ## 2. Event Emission Consistency
 
