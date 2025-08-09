@@ -1,22 +1,33 @@
 # Makefile for vt100 library
 
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -O2 -fPIC
 AR = ar
 ARFLAGS = rcs
 
-LIB = libvt100.a
-OBJS = vt100.o
+BUILD_DIR ?= ../build
+LIB = ../build/libvt100.a
+OBJS = ../build/vt100.o
+
+# Allow SANITIZE=address,undefined, etc.
+ifeq ($(SANITIZE),)
+  CFLAGS = -Wall -Wextra -std=c99 -O2 -fPIC
+else
+  CFLAGS = -Wall -Wextra -std=c99 -g -fPIC -fsanitize=$(SANITIZE)
+endif
+
 
 all: $(LIB)
 
-$(LIB): $(OBJS)
+../build:
+	mkdir -p ../build
+
+$(LIB): $(OBJS) | ../build
 	$(AR) $(ARFLAGS) $@ $^
 
-vt100.o: vt100.c vt100.h
-	$(CC) $(CFLAGS) -c vt100.c -o vt100.o
+../build/vt100.o: vt100.c vt100.h | ../build
+	$(CC) $(CFLAGS) -c vt100.c -o $@
 
 clean:
-	rm -f $(OBJS) $(LIB)
+	rm -f ../build/vt100.o ../build/libvt100.a
 
 .PHONY: all clean

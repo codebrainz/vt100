@@ -1,22 +1,34 @@
-# Makefile for vt100 unit tests
+# Makefile for vt100 tests (deduplicated and modern)
 
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -O2 -I../src
-LDFLAGS = -L../src -lvt100
+BUILD_DIR = ../build
+LIBS = -L../build -lvt100
+TEST = ../build/vt100_test
+OBJS = ../build/vt100_test.o
 
-SRCS = vt100_test.c
-OBJS = $(SRCS:.c=.o)
-TARGET = vt100_test
+# Allow SANITIZE=address,undefined, etc.
+ifeq ($(SANITIZE),)
+  CFLAGS = -Wall -Wextra -std=c99 -O2 -I../src
+else
+  CFLAGS = -Wall -Wextra -std=c99 -g -fsanitize=$(SANITIZE) -I../src
+endif
 
-all: $(TARGET)
+all: $(TEST)
 
-$(TARGET): $(OBJS) ../src/libvt100.a
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+../build:
+	mkdir -p ../build
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+$(TEST): $(OBJS) ../build/libvt100.a | ../build
+	$(MAKE) -C ../src
+	$(CC) $(CFLAGS) -o $@ $^ -L../build -lvt100
+
+../build/vt100_test.o: vt100_test.c | ../build
+	$(CC) $(CFLAGS) -c vt100_test.c -o $@
+
+test: $(TEST)
+	$<
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f ../build/vt100_test.o ../build/vt100_test
 
-.PHONY: all clean
+.PHONY: all clean test
