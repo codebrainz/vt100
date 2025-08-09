@@ -21,52 +21,54 @@ application that needs to interpret terminal control codes.
 
 All files are in the project root unless otherwise noted:
 
-- `vt100.c`, `vt100.h` — Library source and header
-- `vt100_test.c` — Unit tests for the parser
-- `Makefile` — Build system
-- `Doxyfile` — Doxygen configuration
-- `build/docs/reference/html/` — Generated API documentation (HTML)
-- `LICENSE.md`, `README.md` — License and this file
+- `vt100.c`, `vt100.h` Library source and header
+- `vt100_test.c` Unit tests for the parser
+- `CMakeLists.txt` CMake build system
+- `Doxyfile.in` Doxygen configuration template
+- `LICENSE.md` License
+- `README.md` This file
 
 ## Quick Start
 
-1. **Build and test:**
+## Building with CMake
 
-   ```sh
-   make test
-   ```
+This project supports building with CMake (recommended). You can enable
+optional documentation and test targets using CMake options.
 
-   This builds the static library (`build/libvt100.a`) and test binary
-   (`build/vt100_test`), then runs all unit tests.
-
-2. **Format code (optional):**
-
-   ```sh
-   make format
-   ```
-
-3. **Generate documentation (optional):**
+### Basic build (library only)
 
 ```sh
-make docs
-# Open build/docs/reference/html/index.html in your browser
+cmake -S . -B build
+cmake --build build
 ```
 
-## Building
-
-To build the library and run the tests:
+### Build with tests and documentation
 
 ```sh
-make test
+cmake -S . -B build -DBUILD_TESTS=ON -DBUILD_DOCS=ON
+cmake --build build
 ```
 
-This will build the static library (`build/libvt100.a`) and the test binary
-(`build/vt100_test`), then run all unit tests.
-
-To reformat all source/header files using `clang-format`:
+### Build only tests or docs
 
 ```sh
-make format
+# Only tests:
+cmake -S . -B build -DBUILD_TESTS=ON
+cmake --build build
+
+# Only docs:
+cmake -S . -B build -DBUILD_DOCS=ON
+cmake --build build --target doc
+```
+
+Test binary: `build/bin/vt100_test`
+Static library: `build/lib/libvt100.a`
+Documentation: `build/docs/reference/html/index.html`
+
+### Run tests
+
+```sh
+build/bin/vt100_test
 ```
 
 ## Usage
@@ -119,42 +121,19 @@ See the unit tests in `vt100_test.c` for more usage examples.
 
 ## Documentation
 
-To generate API documentation (HTML) with Doxygen:
+To generate API documentation (HTML) with CMake:
 
 ```sh
-make docs
+cmake --build build --target doc
 # Open build/docs/reference/html/index.html in your browser
 ```
 
 ## Requirements
 
 - Standard C99 compiler (tested with gcc and clang)
-- `make` for building
-- `clang-format` for formatting (optional)
-
-## Installation
-
-To install the library and header system-wide (default prefix `/usr/local`):
-
-```sh
-sudo make install
-```
-
-You can override the install prefix:
-
-```sh
-sudo make install PREFIX=/opt
-```
-
-This installs `libvt100.a` to `$PREFIX/lib` and `vt100.h` to `$PREFIX/include`.
-
-## Uninstallation
-
-To remove the installed library and header:
-
-```sh
-sudo make uninstall
-```
+- CMake 3.10+ (recommended)
+- `make` (optional, for legacy Makefile)
+- `clang-format` (optional, for formatting)
 
 ## License
 

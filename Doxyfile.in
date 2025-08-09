@@ -1,0 +1,16 @@
+# Doxyfile for VT100 Project
+
+# Minimal config for HTML output only
+
+PROJECT_NAME           = @DOXYGEN_PROJECT_NAME@
+PROJECT_NUMBER         = @DOXYGEN_PROJECT_NUMBER@
+PROJECT_BRIEF          = @DOXYGEN_PROJECT_BRIEF@
+OUTPUT_DIRECTORY       = @DOXYGEN_OUTPUT_DIRECTORY@
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+INPUT                  = @DOXYGEN_INPUT@
+FILE_PATTERNS          = @DOXYGEN_FILE_PATTERNS@
+RECURSIVE              = YES
+EXTRACT_ALL            = YES
+QUIET                  = YES
+USE_MDFILE_AS_MAINPAGE = README.md

@@ -1,1 +1,31 @@
+
+# Build directory
 /build/
+
+# CMake files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Doxygen output
+build/docs/
+Doxyfile
+
+# Editor/project files
+*.swp
+*.swo
+*.user
+*.workspace
+.vscode/
+.idea/
+
+# Compiled objects and binaries
+*.o
+*.a
+*.so
+*.exe
+*.out
+
+# Test binaries
+vt100_test
