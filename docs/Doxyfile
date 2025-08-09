@@ -3,7 +3,7 @@
 # Minimal config for HTML output only
 
 PROJECT_NAME      = VT100 Parser
-OUTPUT_DIRECTORY  = docs/reference
+OUTPUT_DIRECTORY  = build/docs/reference
 GENERATE_HTML     = YES
 GENERATE_LATEX    = NO
 INPUT             = src

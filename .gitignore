@@ -1,6 +1,1 @@
-*.a
-*.o
-*.tar.*
-/tests/vt100_test
-/docs/reference/
 /build/
