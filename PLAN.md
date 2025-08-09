@@ -19,10 +19,10 @@ This checklist outlines suggested improvements and enhancements for the VT100 pa
 
 ## 4. Test Suite Enhancements
 
-- [ ] Add tests for maximum-length OSC/DCS/PM/APC strings (at buffer limit)
-- [ ] Add tests for CSI sequences with >16 parameters (should be truncated)
-- [ ] Add tests for malformed/incomplete escape sequences (e.g., ESC [ with no final byte)
-- [ ] Add negative tests for invalid/partial sequences (assert no spurious events)
+- [x] Add tests for maximum-length OSC/DCS/PM/APC strings (at buffer limit)
+- [x] Add tests for CSI sequences with >16 parameters (should be truncated)
+- [x] Add tests for malformed/incomplete escape sequences (e.g., ESC [ with no final byte)
+- [x] Add negative tests for invalid/partial sequences (assert no spurious events)
 
 ## 5. Code Style & Maintenance
 
