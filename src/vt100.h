@@ -145,6 +145,20 @@ struct vt100_parser {
     vt100_pm_t pm; /**< PM state */
     vt100_apc_t apc; /**< APC state */
     char esc_intermediate; /**< ESC intermediate byte */
+    /**
+     * @name String sequence state (OSC/DCS/PM/APC)
+     * @brief Internal state for robust string parsing and overflow handling.
+     * These fields are used to track ESC/ST terminators and buffer overflows
+     * for each string type, ensuring thread safety and correct event emission.
+     */
+    int osc_esc_seen; /**< OSC: ESC seen before possible ST (\\) */
+    int osc_overflowed; /**< OSC: Buffer overflowed, ignore until terminator */
+    int dcs_esc_seen; /**< DCS: ESC seen before possible ST (\\) */
+    int dcs_overflowed; /**< DCS: Buffer overflowed, ignore until terminator */
+    int pm_esc_seen; /**< PM: ESC seen before possible ST (\\) */
+    int pm_overflowed; /**< PM: Buffer overflowed, ignore until terminator */
+    int apc_esc_seen; /**< APC: ESC seen before possible ST (\\) */
+    int apc_overflowed; /**< APC: Buffer overflowed, ignore until terminator */
 };
 
 /**

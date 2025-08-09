@@ -62,6 +62,14 @@ void vt100_parser_reset(vt100_parser_t* p)
     memset(&p->osc, 0, sizeof(p->osc));
     memset(&p->dcs, 0, sizeof(p->dcs));
     p->esc_intermediate = 0;
+    p->osc_esc_seen = 0;
+    p->osc_overflowed = 0;
+    p->dcs_esc_seen = 0;
+    p->dcs_overflowed = 0;
+    p->pm_esc_seen = 0;
+    p->pm_overflowed = 0;
+    p->apc_esc_seen = 0;
+    p->apc_overflowed = 0;
 }
 
 // No destroy needed
@@ -200,17 +208,28 @@ static void handle_csi_entry(vt100_parser_t* p, char ch)
 static void handle_csi_param(vt100_parser_t* p, char ch)
 {
     if (ch >= '0' && ch <= '9') {
-        int* n = &p->csi.params[p->csi.num_params];
+        // If this is the first digit of a new parameter, ensure num_params >= 1
+        if (p->csi.num_params == 0) {
+            p->csi.num_params = 1;
+            p->csi.params[0] = 0;
+        }
+        int* n = &p->csi.params[p->csi.num_params - 1];
         *n = (*n) * 10 + (ch - '0');
     } else if (ch == ';') {
-        if (p->csi.num_params < VT100_MAX_CSI_PARAMS - 1) {
-            p->csi.num_params++;
+        // Start a new parameter
+        if (p->csi.num_params < VT100_MAX_CSI_PARAMS) {
+            p->csi.params[p->csi.num_params++] = 0;
         }
     } else if (ch >= 0x20 && ch <= 0x2F) {
         if (p->csi.num_intermediates < VT100_MAX_CSI_INTERMEDIATES)
             p->csi.intermediates[p->csi.num_intermediates++] = ch;
         p->state = S_CSI_INTER;
     } else if (ch >= 0x40 && ch <= 0x7E) {
+        // If no digits or semicolons were seen, treat as one param (default 0)
+        if (p->csi.num_params == 0) {
+            p->csi.num_params = 1;
+            p->csi.params[0] = 0;
+        }
         p->csi.command = ch;
         vt100_event_t ev = { 0 };
         ev.type = VT100_EVENT_CSI;
@@ -256,25 +275,58 @@ static void handle_csi_inter(vt100_parser_t* p, char ch)
 static void handle_osc_string(vt100_parser_t* p, char ch)
 {
     // OSC is terminated by BEL or ST (ESC \\)
+    if (p->osc_overflowed) {
+        // Ignore all input until BEL or ST
+        if (ch == 0x07) {
+            p->osc_overflowed = 0;
+            p->state = S_GROUND;
+            p->osc_esc_seen = 0;
+        } else if (ch == 0x1B) {
+            p->osc_esc_seen = 1;
+        } else if (p->osc_esc_seen && ch == '\\') {
+            p->osc_overflowed = 0;
+            p->state = S_GROUND;
+            p->osc_esc_seen = 0;
+        } else {
+            p->osc_esc_seen = 0;
+        }
+        return;
+    }
     if (ch == 0x07) {
         vt100_event_t ev = { 0 };
         ev.type = VT100_EVENT_OSC;
+        p->osc.string[p->osc.length] = 0;
         ev.data.osc = p->osc;
+        ev.data.osc.length = p->osc.length;
         emit_event(p, &ev);
         p->state = S_GROUND;
-    } else if (ch == '\\') {
-        if (p->osc.length > 0 && p->osc.string[p->osc.length - 1] == 0x1B) {
-            p->osc.length--; // Remove ESC
+        p->osc_esc_seen = 0;
+    } else if (ch == 0x1B) {
+        p->osc_esc_seen = 1;
+    } else if (p->osc_esc_seen && ch == '\\') {
+        // ESC \\ (ST) terminator
+        vt100_event_t ev = { 0 };
+        ev.type = VT100_EVENT_OSC;
+        p->osc.string[p->osc.length] = 0;
+        ev.data.osc = p->osc;
+        ev.data.osc.length = p->osc.length;
+        emit_event(p, &ev);
+        p->state = S_GROUND;
+        p->osc_esc_seen = 0;
+    } else {
+        p->osc_esc_seen = 0;
+        if (p->osc.length < VT100_MAX_OSC_STRING - 1) {
+            p->osc.string[p->osc.length++] = ch;
+        } else {
+            // Buffer overflow: emit truncated event and ignore until terminator
             vt100_event_t ev = { 0 };
             ev.type = VT100_EVENT_OSC;
+            p->osc.string[p->osc.length] = 0;
             ev.data.osc = p->osc;
+            ev.data.osc.length = p->osc.length;
             emit_event(p, &ev);
-            p->state = S_GROUND;
-        } else if (p->osc.length < VT100_MAX_OSC_STRING - 1) {
-            p->osc.string[p->osc.length++] = ch;
+            p->osc_overflowed = 1;
         }
-    } else if (p->osc.length < VT100_MAX_OSC_STRING - 1) {
-        p->osc.string[p->osc.length++] = ch;
     }
 }
 
@@ -294,25 +346,55 @@ static void handle_dcs_entry(vt100_parser_t* p, char ch)
 static void handle_dcs_string(vt100_parser_t* p, char ch)
 {
     // DCS is terminated by BEL or ST (ESC \\)
+    if (p->dcs_overflowed) {
+        if (ch == 0x07) {
+            p->dcs_overflowed = 0;
+            p->state = S_GROUND;
+            p->dcs_esc_seen = 0;
+        } else if (ch == 0x1B) {
+            p->dcs_esc_seen = 1;
+        } else if (p->dcs_esc_seen && ch == '\\') {
+            p->dcs_overflowed = 0;
+            p->state = S_GROUND;
+            p->dcs_esc_seen = 0;
+        } else {
+            p->dcs_esc_seen = 0;
+        }
+        return;
+    }
     if (ch == 0x07) {
         vt100_event_t ev = { 0 };
         ev.type = VT100_EVENT_DCS;
+        p->dcs.string[p->dcs.length] = 0;
         ev.data.dcs = p->dcs;
+        ev.data.dcs.length = p->dcs.length;
         emit_event(p, &ev);
         p->state = S_GROUND;
-    } else if (ch == '\\') {
-        if (p->dcs.length > 0 && p->dcs.string[p->dcs.length - 1] == 0x1B) {
-            p->dcs.length--; // Remove ESC
+        p->dcs_esc_seen = 0;
+    } else if (ch == 0x1B) {
+        p->dcs_esc_seen = 1;
+    } else if (p->dcs_esc_seen && ch == '\\') {
+        vt100_event_t ev = { 0 };
+        ev.type = VT100_EVENT_DCS;
+        p->dcs.string[p->dcs.length] = 0;
+        ev.data.dcs = p->dcs;
+        ev.data.dcs.length = p->dcs.length;
+        emit_event(p, &ev);
+        p->state = S_GROUND;
+        p->dcs_esc_seen = 0;
+    } else {
+        p->dcs_esc_seen = 0;
+        if (p->dcs.length < VT100_MAX_DCS_STRING - 1) {
+            p->dcs.string[p->dcs.length++] = ch;
+        } else {
             vt100_event_t ev = { 0 };
             ev.type = VT100_EVENT_DCS;
+            p->dcs.string[p->dcs.length] = 0;
             ev.data.dcs = p->dcs;
+            ev.data.dcs.length = p->dcs.length;
             emit_event(p, &ev);
-            p->state = S_GROUND;
-        } else if (p->dcs.length < VT100_MAX_DCS_STRING - 1) {
-            p->dcs.string[p->dcs.length++] = ch;
+            p->dcs_overflowed = 1;
         }
-    } else if (p->dcs.length < VT100_MAX_DCS_STRING - 1) {
-        p->dcs.string[p->dcs.length++] = ch;
     }
 }
 /*
@@ -321,25 +403,55 @@ static void handle_dcs_string(vt100_parser_t* p, char ch)
 static void handle_pm_string(vt100_parser_t* p, char ch)
 {
     // PM is terminated by BEL or ST (ESC \\)
+    if (p->pm_overflowed) {
+        if (ch == 0x07) {
+            p->pm_overflowed = 0;
+            p->state = S_GROUND;
+            p->pm_esc_seen = 0;
+        } else if (ch == 0x1B) {
+            p->pm_esc_seen = 1;
+        } else if (p->pm_esc_seen && ch == '\\') {
+            p->pm_overflowed = 0;
+            p->state = S_GROUND;
+            p->pm_esc_seen = 0;
+        } else {
+            p->pm_esc_seen = 0;
+        }
+        return;
+    }
     if (ch == 0x07) {
         vt100_event_t ev = { 0 };
         ev.type = VT100_EVENT_PM;
+        p->pm.string[p->pm.length] = 0;
         ev.data.pm = p->pm;
+        ev.data.pm.length = p->pm.length;
         emit_event(p, &ev);
         p->state = S_GROUND;
-    } else if (ch == '\\') {
-        if (p->pm.length > 0 && p->pm.string[p->pm.length - 1] == 0x1B) {
-            p->pm.length--;
+        p->pm_esc_seen = 0;
+    } else if (ch == 0x1B) {
+        p->pm_esc_seen = 1;
+    } else if (p->pm_esc_seen && ch == '\\') {
+        vt100_event_t ev = { 0 };
+        ev.type = VT100_EVENT_PM;
+        p->pm.string[p->pm.length] = 0;
+        ev.data.pm = p->pm;
+        ev.data.pm.length = p->pm.length;
+        emit_event(p, &ev);
+        p->state = S_GROUND;
+        p->pm_esc_seen = 0;
+    } else {
+        p->pm_esc_seen = 0;
+        if (p->pm.length < VT100_MAX_PM_STRING - 1) {
+            p->pm.string[p->pm.length++] = ch;
+        } else {
             vt100_event_t ev = { 0 };
             ev.type = VT100_EVENT_PM;
+            p->pm.string[p->pm.length] = 0;
             ev.data.pm = p->pm;
+            ev.data.pm.length = p->pm.length;
             emit_event(p, &ev);
-            p->state = S_GROUND;
-        } else if (p->pm.length < VT100_MAX_PM_STRING - 1) {
-            p->pm.string[p->pm.length++] = ch;
+            p->pm_overflowed = 1;
         }
-    } else if (p->pm.length < VT100_MAX_PM_STRING - 1) {
-        p->pm.string[p->pm.length++] = ch;
     }
 }
 
@@ -349,25 +461,55 @@ static void handle_pm_string(vt100_parser_t* p, char ch)
 static void handle_apc_string(vt100_parser_t* p, char ch)
 {
     // APC is terminated by BEL or ST (ESC \\)
+    if (p->apc_overflowed) {
+        if (ch == 0x07) {
+            p->apc_overflowed = 0;
+            p->state = S_GROUND;
+            p->apc_esc_seen = 0;
+        } else if (ch == 0x1B) {
+            p->apc_esc_seen = 1;
+        } else if (p->apc_esc_seen && ch == '\\') {
+            p->apc_overflowed = 0;
+            p->state = S_GROUND;
+            p->apc_esc_seen = 0;
+        } else {
+            p->apc_esc_seen = 0;
+        }
+        return;
+    }
     if (ch == 0x07) {
         vt100_event_t ev = { 0 };
         ev.type = VT100_EVENT_APC;
+        p->apc.string[p->apc.length] = 0;
         ev.data.apc = p->apc;
+        ev.data.apc.length = p->apc.length;
         emit_event(p, &ev);
         p->state = S_GROUND;
-    } else if (ch == '\\') {
-        if (p->apc.length > 0 && p->apc.string[p->apc.length - 1] == 0x1B) {
-            p->apc.length--;
+        p->apc_esc_seen = 0;
+    } else if (ch == 0x1B) {
+        p->apc_esc_seen = 1;
+    } else if (p->apc_esc_seen && ch == '\\') {
+        vt100_event_t ev = { 0 };
+        ev.type = VT100_EVENT_APC;
+        p->apc.string[p->apc.length] = 0;
+        ev.data.apc = p->apc;
+        ev.data.apc.length = p->apc.length;
+        emit_event(p, &ev);
+        p->state = S_GROUND;
+        p->apc_esc_seen = 0;
+    } else {
+        p->apc_esc_seen = 0;
+        if (p->apc.length < VT100_MAX_APC_STRING - 1) {
+            p->apc.string[p->apc.length++] = ch;
+        } else {
             vt100_event_t ev = { 0 };
             ev.type = VT100_EVENT_APC;
+            p->apc.string[p->apc.length] = 0;
             ev.data.apc = p->apc;
+            ev.data.apc.length = p->apc.length;
             emit_event(p, &ev);
-            p->state = S_GROUND;
-        } else if (p->apc.length < VT100_MAX_APC_STRING - 1) {
-            p->apc.string[p->apc.length++] = ch;
+            p->apc_overflowed = 1;
         }
-    } else if (p->apc.length < VT100_MAX_APC_STRING - 1) {
-        p->apc.string[p->apc.length++] = ch;
     }
 }
 
