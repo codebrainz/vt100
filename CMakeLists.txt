@@ -7,6 +7,10 @@ project(vt100
     LANGUAGES C)
 
 
+# Options for tests and docs
+option(BUILD_TESTS "Build unit tests" OFF)
+option(BUILD_DOCS "Build documentation with Doxygen" OFF)
+
 # Set C standard
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -16,15 +20,22 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-
-# Source files (flat structure)
+# Source/header variables
 set(VT100_SRC vt100.c)
 set(VT100_HDR vt100.h)
 
-# Library target
 add_library(vt100 STATIC ${VT100_SRC} ${VT100_HDR})
 
 target_include_directories(vt100 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+# Use GNUInstallDirs for standard install locations
+include(GNUInstallDirs)
+install(TARGETS vt100
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+install(FILES ${VT100_HDR} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # Only build test executable if enabled
 if(BUILD_TESTS)
