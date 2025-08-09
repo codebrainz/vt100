@@ -3,13 +3,21 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+/*
+ * vt100_test.c - Unit tests for vt100 parser
+ *
+ * This file contains a set of unit tests for the incremental VT100 parser.
+ * Each test feeds a specific sequence to the parser and checks that the
+ * correct event is emitted. The test harness uses a callback to capture
+ * the last event and a counter to verify the number of events.
+ */
 
 #define FEED(s) vt100_parser_feed(p, s, strlen(s))
 
 static int event_count = 0;
 static vt100_event_t last_event;
 
-// Helper to reset state
+// Global test state
 void reset_state()
 {
     event_count = 0;
@@ -20,7 +28,7 @@ void test_cb(vt100_parser_t* parser, const vt100_event_t* ev, void* user)
 {
     (void)parser;
     (void)user;
-    event_count++;
+    event_count++; // Test callback: records the last event and increments event count
     memcpy(&last_event, ev, sizeof(*ev));
 }
 void test_csi_intermediate_private()
@@ -270,6 +278,7 @@ int main(void)
     test_pm_apc();
     test_pm_apc_c1();
     test_incremental_osc_st();
+    // Main: run all tests and print summary
     printf("All tests passed!\n");
     return 0;
 }

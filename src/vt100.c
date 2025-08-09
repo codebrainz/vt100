@@ -1,21 +1,32 @@
-// vt100.c - Incremental VT100 parser implementation
+#include "vt100.h"
+/*
+ * vt100.c - Incremental VT100 parser implementation
+ *
+ * This file implements a state machine for parsing VT100/ANSI escape
+ * sequences. The parser processes input byte-by-byte and emits events
+ * for printable characters, control characters, and recognized sequences.
+ *
+ * State transitions are handled by per-state handler functions. Each
+ * handler is responsible for updating the parser state and emitting
+ * events as appropriate. See vt100.h for API documentation.
+ */
 #include "vt100.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
-// Parser states
+// Parser states for the VT100 state machine
 typedef enum {
-    S_GROUND,
-    S_ESC,
-    S_CSI_ENTRY,
-    S_CSI_PARAM,
-    S_CSI_INTER,
-    S_OSC_STRING,
-    S_DCS_ENTRY,
-    S_DCS_STRING,
-    S_PM_STRING,
-    S_APC_STRING
+    S_GROUND, // Default state: printable/control chars, ESC starts sequence
+    S_ESC, // After ESC: next byte determines sequence type
+    S_CSI_ENTRY, // After CSI introducer: parse params/intermediates
+    S_CSI_PARAM, // Parsing CSI parameters
+    S_CSI_INTER, // Parsing CSI intermediate bytes
+    S_OSC_STRING, // Parsing OSC string (terminated by BEL or ST)
+    S_DCS_ENTRY, // After DCS introducer
+    S_DCS_STRING, // Parsing DCS string (terminated by BEL or ST)
+    S_PM_STRING, // Parsing PM string (terminated by BEL or ST)
+    S_APC_STRING // Parsing APC string (terminated by BEL or ST)
 } vt100_state_t;
 
 // vt100_parser_t is now a typedef struct in the header
@@ -55,6 +66,11 @@ void vt100_parser_reset(vt100_parser_t* p)
 
 // No destroy needed
 
+/*
+ * S_GROUND: Default state. Handles printable, control, and sequence introducers.
+ * - Printable/control chars are emitted as events.
+ * - ESC or C1 codes transition to sequence states.
+ */
 static void handle_ground(vt100_parser_t* p, char ch)
 {
     vt100_event_t ev = { 0 };
@@ -100,6 +116,11 @@ static void handle_ground(vt100_parser_t* p, char ch)
     }
 }
 
+/*
+ * S_ESC: After ESC. Determines the type of sequence to parse next.
+ * - '[': CSI, ']': OSC, 'P': DCS, '^': PM, '_': APC, etc.
+ * - Final byte emits ESC event and returns to ground.
+ */
 static void handle_esc(vt100_parser_t* p, char ch)
 {
     vt100_event_t ev = { 0 };
@@ -139,6 +160,10 @@ static void handle_esc(vt100_parser_t* p, char ch)
     }
 }
 
+/*
+ * S_CSI_ENTRY: After CSI introducer. Handles private/intermediate bytes,
+ * parameters, and final command byte. Transitions to S_CSI_PARAM or S_CSI_INTER.
+ */
 static void handle_csi_entry(vt100_parser_t* p, char ch)
 {
     // Private mode char (0x3C-0x3F) or intermediates (0x20-0x2F)
@@ -167,6 +192,11 @@ static void handle_csi_entry(vt100_parser_t* p, char ch)
     }
 }
 
+/*
+ * S_CSI_PARAM: Parsing CSI parameters (digits and semicolons).
+ * - Handles multi-digit and multi-parameter CSI sequences.
+ * - Transitions to S_CSI_INTER for intermediate bytes, or emits event on final byte.
+ */
 static void handle_csi_param(vt100_parser_t* p, char ch)
 {
     if (ch >= '0' && ch <= '9') {
@@ -195,6 +225,10 @@ static void handle_csi_param(vt100_parser_t* p, char ch)
     }
 }
 
+/*
+ * S_CSI_INTER: Parsing CSI intermediate bytes (0x20-0x2F).
+ * - Collects intermediate bytes, emits event on final byte.
+ */
 static void handle_csi_inter(vt100_parser_t* p, char ch)
 {
     if (ch >= 0x20 && ch <= 0x2F) {
@@ -215,6 +249,10 @@ static void handle_csi_inter(vt100_parser_t* p, char ch)
     }
 }
 
+/*
+ * S_OSC_STRING: Parsing OSC string. Terminated by BEL or ST (ESC \\).
+ * - Handles overflow and proper termination.
+ */
 static void handle_osc_string(vt100_parser_t* p, char ch)
 {
     // OSC is terminated by BEL or ST (ESC \\)
@@ -240,6 +278,9 @@ static void handle_osc_string(vt100_parser_t* p, char ch)
     }
 }
 
+/*
+ * S_DCS_ENTRY: After DCS introducer. Immediately transitions to S_DCS_STRING.
+ */
 static void handle_dcs_entry(vt100_parser_t* p, char ch)
 {
     p->state = S_DCS_STRING;
@@ -247,6 +288,9 @@ static void handle_dcs_entry(vt100_parser_t* p, char ch)
     handle_dcs_string(p, ch);
 }
 
+/*
+ * S_DCS_STRING: Parsing DCS string. Terminated by BEL or ST (ESC \\).
+ */
 static void handle_dcs_string(vt100_parser_t* p, char ch)
 {
     // DCS is terminated by BEL or ST (ESC \\)
@@ -271,6 +315,9 @@ static void handle_dcs_string(vt100_parser_t* p, char ch)
         p->dcs.string[p->dcs.length++] = ch;
     }
 }
+/*
+ * S_PM_STRING: Parsing PM string. Terminated by BEL or ST (ESC \\).
+ */
 static void handle_pm_string(vt100_parser_t* p, char ch)
 {
     // PM is terminated by BEL or ST (ESC \\)
@@ -296,6 +343,9 @@ static void handle_pm_string(vt100_parser_t* p, char ch)
     }
 }
 
+/*
+ * S_APC_STRING: Parsing APC string. Terminated by BEL or ST (ESC \\).
+ */
 static void handle_apc_string(vt100_parser_t* p, char ch)
 {
     // APC is terminated by BEL or ST (ESC \\)
@@ -321,6 +371,10 @@ static void handle_apc_string(vt100_parser_t* p, char ch)
     }
 }
 
+/*
+ * Main parser entry: feeds input bytes to the state machine.
+ * Each byte is dispatched to the handler for the current state.
+ */
 void vt100_parser_feed(vt100_parser_t* p, const char* data, size_t len)
 {
     for (size_t i = 0; i < len; ++i) {
