@@ -40,7 +40,12 @@ This checklist outlines suggested improvements and enhancements for the VT100 pa
 
 ## 7. Build System
 
+- [ ] Ensure all build artifacts are placed in a `build` directory in the project root (no build spam in source tree)
+- [ ] Add a Makefile target to build a source distribution tarball (xz compressed)
 - [ ] (Optional) Add install/uninstall targets to Makefiles for easier distribution
+- [ ] Add support to run tests under Valgrind (e.g., `make valgrind-test`)
+- [ ] Add support to enable GCC sanitizers (ASan, UBSan, etc.) via Makefile (e.g., `make SANITIZE=address test`)
+- [ ] Ensure Valgrind and sanitizers are not enabled at the same time (document mutual exclusivity)
 
 ---
 
