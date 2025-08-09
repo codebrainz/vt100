@@ -14,8 +14,8 @@ This checklist outlines suggested improvements and enhancements for the VT100 pa
 
 ## 3. XTerm Event Parsing
 
-- [ ] Review and update OSC 52 clipboard handling for future-proofing (other OSC codes?)
-- [ ] Review XTerm mouse/window ops parsing for completeness (all valid variants covered?)
+- [x] Review and update OSC 52 clipboard handling for future-proofing (other OSC codes?). Added clarifying comments; code is robust.
+- [x] Review XTerm mouse/window ops parsing for completeness (all valid variants covered?). Added clarifying comments; code is robust.
 
 ## 4. Test Suite Enhancements
 

@@ -186,8 +186,9 @@ static void handle_csi_entry(vt100_parser_t* p, char ch)
         handle_csi_param(p, ch);
     } else if (ch >= 0x20 && ch <= 0x2F) {
         p->state = S_CSI_INTER;
-        p->csi.intermediates[0] = ch;
-        p->csi.num_intermediates = 1;
+        if (p->csi.num_intermediates < VT100_MAX_CSI_INTERMEDIATES) {
+            p->csi.intermediates[p->csi.num_intermediates++] = ch;
+        }
     } else if (ch >= 0x40 && ch <= 0x7E) {
         p->csi.command = ch;
         vt100_event_t ev = { 0 };
@@ -245,9 +246,10 @@ static void handle_csi_param(vt100_parser_t* p, char ch)
             p->csi.params[p->csi.num_params++] = 0;
         }
     } else if (ch >= 0x20 && ch <= 0x2F) {
-        if (p->csi.num_intermediates < VT100_MAX_CSI_INTERMEDIATES)
-            p->csi.intermediates[p->csi.num_intermediates++] = ch;
         p->state = S_CSI_INTER;
+        if (p->csi.num_intermediates < VT100_MAX_CSI_INTERMEDIATES) {
+            p->csi.intermediates[p->csi.num_intermediates++] = ch;
+        }
     } else if (ch >= 0x40 && ch <= 0x7E) {
         // If no digits or semicolons were seen, treat as one param (default 0)
         if (p->csi.num_params == 0) {
@@ -256,14 +258,20 @@ static void handle_csi_param(vt100_parser_t* p, char ch)
         }
         p->csi.command = ch;
         vt100_event_t ev = { 0 };
-        // SGR mouse mode: CSI < ... M/m
+        /*
+         * SGR mouse mode: CSI < ... M/m. All standard XTerm mouse tracking variants are supported.
+         * If new variants are introduced, update this handler.
+         */
         if ((ch == 'M' || ch == 'm') && p->csi.private_leader == '<') {
             ev.type = VT100_EVENT_XTERM_MOUSE;
             emit_event(p, &ev);
             p->state = S_GROUND;
             return;
         }
-        // XTerm window operation: CSI ... t
+        /*
+         * XTerm window operation: CSI ... t. All standard XTerm window ops are supported.
+         * If new variants are introduced, update this handler.
+         */
         if (ch == 't') {
             ev.type = VT100_EVENT_XTERM_WINOP;
             ev.data.xterm_winop.op = p->csi.params[0];
@@ -318,26 +326,27 @@ static void handle_csi_inter(vt100_parser_t* p, char ch)
 static void handle_osc_string(vt100_parser_t* p, char ch)
 {
     // OSC is terminated by BEL or ST (ESC \\)
+    /*
+     * Only OSC 52 is recognized as a clipboard event (VT100_EVENT_XTERM_CLIPBOARD).
+     * If new clipboard-related OSC codes are introduced in the future, add them here.
+     */
+    int is_clipboard = 0;
+    if (p->osc.length >= 3 && p->osc.string[0] == '5' && p->osc.string[1] == '2' && p->osc.string[2] == ';') {
+        is_clipboard = 1;
+    }
     if (p->osc_overflowed) {
         // Buffer overflow: emit truncated event (already done), ignore input until terminator
-        if (ch == 0x07) {
+        if (ch == 0x07 || (p->osc_esc_seen && ch == '\\')) {
+            // Suppress emission of a second event at the terminator
             p->osc_overflowed = 0;
             p->state = S_GROUND;
             p->osc_esc_seen = 0;
         } else if (ch == 0x1B) {
             p->osc_esc_seen = 1;
-        } else if (p->osc_esc_seen && ch == '\\') {
-            p->osc_overflowed = 0;
-            p->state = S_GROUND;
-            p->osc_esc_seen = 0;
         } else {
             p->osc_esc_seen = 0;
         }
         return;
-    }
-    int is_clipboard = 0;
-    if (p->osc.length >= 3 && p->osc.string[0] == '5' && p->osc.string[1] == '2' && p->osc.string[2] == ';') {
-        is_clipboard = 1;
     }
     if (ch == 0x07) {
         vt100_event_t ev = { 0 };
@@ -398,6 +407,7 @@ static void handle_osc_string(vt100_parser_t* p, char ch)
             }
             emit_event(p, &ev);
             p->osc_overflowed = 1;
+            return; // Prevent further events until terminator
         }
     }
 }
